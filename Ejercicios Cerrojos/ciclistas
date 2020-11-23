@@ -1,0 +1,63 @@
+// Ejercicio de las bicicletas
+#include <stdlib.h>
+#include <stdio.h>
+#include <pthread.h>
+
+// Numero de ciclistas
+#define N_CICLISTAS 8
+#define BIDIRECCIONAL 2 // autobús en ruta
+#define IZQUIERDA 0 //Se va a la izquierda
+#define DERECHA 1 // autobús en ruta
+
+int modoActual = BIDIRECCIONAL;// Modo actual bidireccional
+pthread_mutex_t mutex;
+pthread_cond_t ciclistas_esperando[3];// Esperando en izq / dere/ bidireccional
+
+
+
+void actualizarModo(){
+	int oldMode = modoActual;
+	if((ciclistas_esperando[IZQUIERDA] == 0 )&& (ciclistas_esperando[DERECHA] == 0)){ // Si no hay nadie en el puente
+		pthread_cond_broadcast(ciclistas_esperando[DERECHA];
+		pthread_cond_broadcast(ciclistas_esperando[IZQUIERDA];
+	}
+	
+	else if(ciclistas_esperando[DERECHA] > 2 && ciclistas_esperando[IZQUIERDA] == 0 ) modoActual = DERECHA;
+	
+	else if(ciclistas_esperando[DERECHA]== 0 && ciclistas_esperando[IZQUIERDA] > 2 ) modoActual = IZQUIERDA;
+	
+	if(oldMode != modoActual){
+		if(ciclistas_esperando[DERECHA] > 0) pthread_cond_broadcast(ciclistas_esperando[DERECHA];
+		else if (ciclistas_esperando[IZQUIERDA] > 0) pthread_cond_broadcast(ciclistas_esperando[IZQUIERDA];
+	}
+}
+// Sentido no puede ser mayor de 1
+void accederAlPuente(int sentido){
+	//Bloqueamos el cerrojo
+	pthread_mutex_lock(&mutex);
+	ciclistas_esperando[sentido]++;
+	 // en esta funcion solo hacemos los bloqueos ouesto que los pasar los hemos hecho antes
+	 
+	 // Bloqueos:
+	if(sentido < 2) {// Mientras no sea bidireccional
+		while(modoActual== sentido && ciclistas_esperando[!sentido]>0){
+			 pthread_cond_wait(ciclistas_esperando[DERECHA], &mutex);
+		 }
+		
+		 while(modoActual!= BIDIRECCIONAL && sentido != modoActual && ciclistas_esperando[sentido]>0){
+			 pthread_cond_wait(ciclistas_esperando[DERECHA], &mutex);
+		 }
+	}
+	ciclistas_esperando[sentido]--;
+	// Control del modo
+	actualizarModo();
+	pthread_mutex_unlock(&mutex);
+}
+
+void salirDelPuente(){
+
+	//bloqueamos el cerrojo y aumentamos el numero de personas que quieren bajar del bus
+	pthread_mutex_lock(&mutex);
+	actualizarModo();
+	pthread_mutex_unlock(&mutex);
+}
